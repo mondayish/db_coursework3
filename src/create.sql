@@ -108,7 +108,7 @@ create table request
     executor_id   integer references "user" (id) on delete set null,
     type_id       integer references request_type (id) on delete set null,
     status_id     integer references request_status (id) on delete set null,
-    create_date   timestamp check ( create_date <= current_timestamp ),
+    create_date   timestamp check ( create_date <= current_timestamp ) default current_timestamp,
     alien_form_id integer references alien_form (id) on delete cascade
 );
 
