@@ -1,22 +1,76 @@
--- todo идеи для триггеров
--- Триггер для проверки того, что агент живой, когда добавляется слежка или запрос для него
+-- todo доделать Триггер для создания никнейма пользователя
+-- create or replace function generate_agent_nickname() returns trigger as $$
+-- declare
+--     letters_count integer := (select nextval('nickname_letters_count'));
+--     loops_count integer := (select nextval('nickname_loops_count'));
+-- begin
+--     if new.nickname is null then
+--
+--         else
+--
+--         end if;
+--     end if;
+--
+--     return new;
+-- end;
+-- $$ language plpgsql;
+
+-- create trigger generate_agent_nickname before insert on agent_info
+--     for each row execute procedure generate_agent_nickname();
+
+
+-- Триггер для проверки того, что агент живой, когда добавляется слежка
+create or replace function check_tracking_agent_is_alive() returns trigger as $$
+declare
+    agent_is_alive boolean := (select is_alive from agent_info where user_id = new.agent_info_id);
+begin
+    if not agent_is_alive then
+        raise exception 'agent for tracking must be alive';
+    end if;
+    return new;
+end;
+$$ language plpgsql;
+
+create trigger check_tracking_agent_is_alive before insert on agent_alien
+    for each row execute procedure check_tracking_agent_is_alive();
+
+
+-- Триггер для проверки того, что агент живой, когда добавляется заявка
+create or replace function check_creator_executor_is_alive() returns trigger as $$
+declare
+    creator_is_alive boolean := (select is_alive from agent_info where user_id = new.creator_id);
+    executor_is_alive boolean := (select is_alive from agent_info where user_id = new.executor_id);
+begin
+    if creator_is_alive is not null and not creator_is_alive then
+        raise exception 'creator must be alive';
+    end if;
+    if executor_is_alive is not null and not executor_is_alive then
+        raise exception 'executor must be alive';
+    end if;
+    return new;
+end;
+$$ language plpgsql;
+
+create trigger check_creator_executor_is_alive before insert or update on request
+    for each row execute procedure check_creator_executor_is_alive();
+
 
 -- Триггер для проверок ролей пользователей при проставлении CREATOR_ID и EXECUTOR_ID в заявках
 create or replace function check_creator_executor_roles() returns trigger as $$
 declare
-    visit_status_id integer := (select id from request_status where name = 'Посещение Земли');
-    agent_role_id integer := (select id from role where name = 'Агент');
-    alien_role_id integer := (select id from role where name = 'Пришелец');
+    visit_status_id integer := (select id from request_status where name = 'VISIT');
+    agent_role_id integer := (select id from role where name = 'AGENT');
+    alien_role_id integer := (select id from role where name = 'ALIEN');
 begin
     if not (new.status_id == visit_status_id and
             exists(select 1 from user_roles where user_id = new.creator_id and role_id = alien_role_id) and
             exists(select 1 from user_roles where user_id = new.executor_id and role_id = agent_role_id)) then
-        raise exception 'request with status "Посещение Земли" must create user with role "Пришелец" and execute user with role "Агент"';
+        raise exception 'request with status "VISIT" must create user with role "ALIEN" and execute user with role "AGENT"';
     end if;
     if not (new.status_id != visit_status_id and
             exists(select 1 from user_roles where user_id = new.creator_id and role_id = agent_role_id) and
             exists(select 1 from user_roles where user_id = new.executor_id and role_id = agent_role_id)) then
-        raise exception 'request with statuses "Предупреждение", "Нейтрализация", "Депортация" must create user with role "Пришелец" and execute user with role "Агент"';
+        raise exception 'request with statuses "WARNING", "NEUTRALIZATION", "DEPORTATION" must create and execute user with role "AGENT"';
     end if;
     return new;
 end;
@@ -29,10 +83,10 @@ create trigger check_creator_executor_roles before insert or update on request
 -- Проверка, что USER_ID - пользователь с ролью “Агент”?
 create or replace function check_agent_role() returns trigger as $$
 declare
-    agent_role_id integer := (select id from role where name = 'Агент');
+    agent_role_id integer := (select id from role where name = 'AGENT');
 begin
     if not exists(select 1 from user_roles where user_id = new.user_id and role_id = agent_role_id) then
-        raise exception 'user must have role "Агент"';
+        raise exception 'user must have role "AGENT"';
     end if;
     return new;
 end;
@@ -45,10 +99,10 @@ create trigger check_agent_role before insert or update on agent_info
 -- Проверка, что USER_ID - пользователь с ролью “Пришелец”?
 create or replace function check_alien_role() returns trigger as $$
 declare
-    alien_role_id integer := (select id from role where name = 'Пришелец');
+    alien_role_id integer := (select id from role where name = 'ALIEN');
 begin
     if not exists(select 1 from user_roles where user_id = new.user_id and role_id = alien_role_id) then
-        raise exception 'user must have role "Пришелец"';
+        raise exception 'user must have role "ALIEN"';
     end if;
     return new;
 end;
@@ -56,7 +110,7 @@ $$ language plpgsql;
 
 create trigger check_alien_role before insert or update on alien_info
     for each row execute procedure check_alien_role();
-create trigger check_alien_role before insert or update on alien_info
+create trigger check_alien_role before insert or update on alien_form
     for each row execute procedure check_alien_role();
 
 
@@ -97,7 +151,7 @@ declare
     status varchar(32) := (select name from alien_status where alien_status.id = new.alien_status_id);
     stay_time integer := (select stay_time from alien_form where user_id = new.user_id);
 begin
-    if status == 'На Земле' then
+    if status == 'ON EARTH' then
         new.departure_date = current_date + stay_time;
     end if;
     return new;
