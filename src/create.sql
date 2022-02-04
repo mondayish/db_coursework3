@@ -156,3 +156,6 @@ create table tracking_report
     description    text,
     agent_alien_id integer references agent_alien (id) on delete cascade
 );
+
+-- create sequence if not exists nickname_letters_count;
+-- create sequence if not exists nickname_loops_count;
