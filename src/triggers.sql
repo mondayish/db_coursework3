@@ -62,7 +62,7 @@ declare
     agent_role_id integer := (select id from role where name = 'AGENT');
     alien_role_id integer := (select id from role where name = 'ALIEN');
 begin
-    if not (new.status_id == visit_status_id and
+    if not (new.status_id = visit_status_id and
             exists(select 1 from user_roles where user_id = new.creator_id and role_id = alien_role_id) and
             exists(select 1 from user_roles where user_id = new.executor_id and role_id = agent_role_id)) then
         raise exception 'request with status "VISIT" must create user with role "ALIEN" and execute user with role "AGENT"';
@@ -151,7 +151,7 @@ declare
     status varchar(32) := (select name from alien_status where alien_status.id = new.alien_status_id);
     stay_time integer := (select stay_time from alien_form where user_id = new.user_id);
 begin
-    if status == 'ON EARTH' then
+    if status = 'ON EARTH' then
         new.departure_date = current_date + stay_time;
     end if;
     return new;
