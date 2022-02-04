@@ -16,15 +16,19 @@ insert into role values (1, 'AGENT'),
                         (2, 'ALIEN');
 
 
-
 CREATE OR REPLACE FUNCTION generate_user(UserNum int) RETURNS int[] AS
 $$
 declare 
     generated_users_ids int[];
+	curr_user_id bigint;
 begin
+	select last_value from user_id_seq into curr_user_id;
+	if curr_user_id = 1 then
+		perform nextval('user_id_seq');
+	end if;
     with ins as (
         insert into "user" (USERNAME, PASSW_HASH, USER_PHOTO, AT_EARTH)
-        select md5(cast(nextval('user_id_seq') as text)), md5(i::text), null, TRUE
+        select md5(cast(currval('user_id_seq') as text)), md5(i::text), null, TRUE
         from generate_series(1, $1) s(i) returning id
     ) 
     select array_agg(id) into generated_users_ids from ins;
@@ -47,40 +51,99 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION generate_aliens_and_agents(AliensNum int, AgentsNum int) RETURNS VOID AS
 $$
-declare
-	agents_ids int[];
-	aliens_ids int[];
-begin
-	select generate_user($1) into agents_ids; 
-	perform generate_user_roles('AGENT', agents_ids);
+begin 
+	perform generate_user_roles('AGENT', generate_user($1));
 	perform generate_user_roles('ALIEN', generate_user($2));
 end;
 $$ LANGUAGE plpgsql;
 
+
+CREATE OR REPLACE FUNCTION generate_planets(PlanetNum int) RETURNS int[] AS
+$$
+declare 
+    generated_planets_ids int[];
+begin
+	perform nextval('planet_id_seq');
+    with ins as (
+        insert into planet(name, race)
+        select md5(cast(currval('planet_id_seq') as text)), md5(i::text)
+        from generate_series(1, $1) s(i) returning id
+    ) 
+    select array_agg(id) into generated_planets_ids from ins;
+    return generated_planets_ids;
+end;
+$$ LANGUAGE plpgsql;
+
+
+
+CREATE OR REPLACE FUNCTION generate_skills(SkillNum int) RETURNS int[] AS
+$$
+declare 
+    generated_skills_ids int[];
+begin
+    perform nextval('skill_id_seq');
+    with ins as (
+        insert into skill(name)
+        select md5(cast(currval('skill_id_seq') as text))
+        from generate_series(1, $1) s(i) returning id
+    )
+    select array_agg(id) into generated_skills_ids from ins;
+    return generated_skills_ids;
+end;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION generate_professions(ProfessionsNum int) RETURNS int[] AS
+$$
+declare 
+    generated_professions_ids int[];
+begin
+    perform nextval('profession_id_seq');
+    with ins as (
+        insert into profession(name)
+        select md5(cast(currval('profession_id_seq') as text))
+        from generate_series(1, $1) s(i) returning id
+    )
+    select array_agg(id) into generated_professions_ids from ins;
+    return generated_professions_ids;
+end;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION generate_skill_in_profession(SkillsIds int[], ProfessionsIds int[]) RETURNS VOID AS
+$$
+declare 
+    skills_num int;
+    professions_num int;
+begin
+    professions_num = array_length(ProfessionsIds, 1);
+    select array_length(SkillsIds, 1) into skills_num;
+    
+    -- каждую профессию связываем с i скиллами
+    for i in 1..professions_num
+        loop
+            for j in 1..i % skills_num
+                loop
+                    insert into skill_in_profession(profession_id, skill_id) 
+                    values(ProfessionsIds[i], SkillsIds[j]);
+                end loop;
+        end loop;
+end;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION generate_skills_and_professions(SkillsNum int, ProfessionsNum int) RETURNS VOID AS
+$$
+begin 
+	perform generate_skill_in_profession(generate_skills(SkillsNum), generate_professions(ProfessionsNum));
+end;
+$$ LANGUAGE plpgsql;
+
+
 -- GENERATE 
-select generate_aliens_and_agents(10, 10);
-
-
-
--- create table planet
--- (
---     id   serial primary key,
---     --- added unique
---     name varchar(64) not null unique,
---     race varchar(64)
--- );
-
--- create table skill
--- (
---     id   serial primary key,
---     name varchar(32) not null unique
--- );
-
--- create table profession
--- (
---     id   serial primary key,
---     name varchar(64) not null unique
--- );
+--select generate_aliens_and_agents(10, 10);
+--select generate_planets(10);
+--select generate_skills(10);
+--select generate_skills_and_professions(10, 10);
 
 -- create table skill_in_profession
 -- (
