@@ -1,17 +1,17 @@
-insert into request_type values (1, 'Посещение Земли'),
-                                (2, 'Предупреждение'),
-                                (3, 'Нейтрализация'),
-                                (4, 'Депортация');
+insert into request_type values (1, 'VISIT'),
+                                (2, 'WARNING'),
+                                (3, 'NEUTRALIZATION'),
+                                (4, 'DEPORTATION');
 
-insert into request_status values (1, 'Ожидает'),
-                                  (2, 'Одобрена'),
-                                  (3, 'Отклонена');
+insert into request_status values (1, 'PENDING'),
+                                  (2, 'APPROVED'),
+                                  (3, 'REJECTED');
 
-insert into alien_status values (1, 'Не на Земле'),
-                                (2, 'На Земле'),
-                                (3, 'Депортирован'),
-                                (4, 'Нейтрализован');
+insert into alien_status values (1, 'NOT ON EARTH'),
+                                (2, 'ON EARTH'),
+                                (3, 'DEPORTED'),
+                                (4, 'NEUTRALIZED');
 
-insert into role values (1, 'Агент'),
-                        (2, 'Пришелец');
+insert into role values (1, 'AGENT'),
+                        (2, 'ALIEN');
 
