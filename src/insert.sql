@@ -139,53 +139,78 @@ end;
 $$ LANGUAGE plpgsql;
 
 
+CREATE OR REPLACE FUNCTION generate_locations(LocationsNnum int) RETURNS int[] AS
+$$
+declare 
+    generated_ids int[];
+begin
+    perform nextval('location_id_seq');
+    with ins as (
+        insert into location(city, country)
+        select md5(cast(currval('location_id_seq') as text)), md5(cast(currval('location_id_seq') as text))
+        from generate_series(1, $1) s(i) returning id
+    )
+    select array_agg(id) into generated_ids from ins;
+    return generated_ids;
+end;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION 
+generate_alien_personality(PersonalityNum int) 
+RETURNS int[] AS
+$$
+declare 
+    generated_ids int[];
+    professions_ids int[];
+    locations_ids int[];
+begin
+    professions_ids := ARRAY(select id from profession) ;
+    locations_ids := ARRAY(select id from location);
+    with ins as (
+        insert into alien_personality(first_name, second_name, 
+        age, profession_id, location_id, person_photo) 
+        select 'Ivan', 'Ivanov', 25, professions_ids[1+floor(random()*array_length(professions_ids, 1))::int],
+         locations_ids[1+floor(random()*array_length(locations_ids, 1))::int], E'\\xDEADBEEF'
+        from generate_series(1, $1) s(i) returning id
+    )
+    select array_agg(id) into generated_ids from ins;
+    return generated_ids;
+end;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION 
+generate_alien_form(AlienFormsNum int) 
+RETURNS int[] AS
+$$
+declare 
+    generated_ids int[];
+    planets_ids int[];
+    user_ids int[];
+begin
+    planets_ids := ARRAY(select id from planet) ;
+    user_ids := ARRAY(select ur.user_id from user_roles ur join role r on r.id = ur.role_id where r.name = 'ALIEN');
+    with ins as (
+        insert into alien_form(user_id, planet_id, visit_purpose, stay_time, comment) 
+        select user_ids[1+floor(random()*array_length(user_ids, 1))::int], 
+        planets_ids[1+floor(random()*array_length(planets_ids, 1))::int], md5(i::text), floor(random()*500+1)::int, 
+        md5(md5(i::text))
+        from generate_series(1, $1) s(i) returning id
+    )
+    select array_agg(id) into generated_ids from ins;
+    return generated_ids;
+end;
+$$ LANGUAGE plpgsql;
+
 -- GENERATE 
 --select generate_aliens_and_agents(10, 10);
 --select generate_planets(10);
 --select generate_skills(10);
---select generate_skills_and_professions(10, 10);
+-- select generate_skills_and_professions(10, 10);
+--select generate_locations(10); 
+--select generate_alien_personality(10);
+--select generate_alien_form(10);
 
--- create table skill_in_profession
--- (
---     id            serial primary key,
---     profession_id integer references profession (id) on delete cascade,
---     skill_id      integer references skill (id) on delete cascade
--- );
-
--- create table location
--- (
---     id      serial primary key,
---     city    varchar(64) not null,
---     country varchar(64) not null,
---     unique (city, country)
--- );
-
--- create table alien_status
--- (
---     id   serial primary key,
---     name varchar(32) not null unique
--- );
-
--- create table alien_personality
--- (
---     id            serial primary key,
---     first_name    varchar(64) not null,
---     second_name   varchar(64),
---     age           integer     not null check (age >= 0),
---     profession_id integer     references profession (id) on delete set null,
---     location_id   integer     references location (id) on delete set null,
---     person_photo  bytea       not null
--- );
-
--- create table alien_form
--- (
---     id            serial primary key,
---     user_id       integer references "user" (id) on delete cascade,
---     planet_id     integer     references planet (id) on delete set null,
---     visit_purpose varchar(64) not null,
---     stay_time     integer     not null,
---     comment       text
--- );
 
 -- create table skill_in_alien_form
 -- (

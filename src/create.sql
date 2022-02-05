@@ -17,7 +17,8 @@ create table user_roles
 (
     id      serial primary key,
     user_id integer references "user" (id) on delete cascade,
-    role_id integer references role (id) on delete cascade
+    role_id integer references role (id) on delete cascade,
+    unique(user_id, role_id)
 );
 
 create table request_type
