@@ -57,7 +57,8 @@ create table skill_in_profession
 (
     id            serial primary key,
     profession_id integer references profession (id) on delete cascade,
-    skill_id      integer references skill (id) on delete cascade
+    skill_id      integer references skill (id) on delete cascade,
+    unique(profession_id, skill_id)
 );
 
 create table location
@@ -99,7 +100,8 @@ create table skill_in_alien_form
 (
     id            serial primary key,
     alien_form_id integer references alien_form (id) on delete cascade,
-    skill_id      integer references skill (id) on delete cascade
+    skill_id      integer references skill (id) on delete cascade,
+    unique(skill_id, alien_form_id)
 );
 
 create table request
