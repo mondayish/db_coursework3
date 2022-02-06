@@ -89,7 +89,7 @@ create table alien_personality
 create table alien_form
 (
     id            serial primary key,
-    user_id       integer references "user" (id) on delete cascade,
+    user_id       integer references "user" (id) on delete cascade not null,
     planet_id     integer     references planet (id) on delete set null,
     visit_purpose varchar(64) not null,
     stay_time     integer     not null,
