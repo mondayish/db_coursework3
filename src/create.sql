@@ -120,7 +120,7 @@ create table agent_info
     id       serial primary key,
     user_id  integer references "user" (id) on delete cascade,
     nickname varchar(64) not null,
-    is_alive boolean     not null,
+    is_alive boolean     not null default true,
     unique (nickname, is_alive)
 );
 

@@ -200,7 +200,6 @@ begin
 end;
 $$ LANGUAGE plpgsql;
 
-select * from skill;
 
 CREATE OR REPLACE FUNCTION generate_skill_in_alien_form(AlienFormsIds int[])
  RETURNS VOID AS
@@ -224,11 +223,46 @@ begin
         end loop;
 end;
 $$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION generate_alien_forms_connect_skills(AlienForms int)
  RETURNS VOID AS
 $$
 begin
 	perform generate_skill_in_alien_form(generate_alien_form(10));
+end;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION generate_agent_info() RETURNS VOID AS
+$$
+declare 
+    agents_ids int[];
+    agents int;
+    agents_nicks char[] = '{A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z}';
+    c int = 1;
+    curr_letter int = 1;
+    curr_nick varchar(64) = '';
+begin
+    agents_ids := ARRAY(select ur.user_id from user_roles ur join role r on ur.role_id = r.id where r.name = 'AGENT');
+    agents := array_length(agents_ids, 1);
+    for i in 1..agents
+    loop
+        -- если закончились ники следующие делаем с +1 буквой
+        if c = array_length(agents_nicks, 1) then c:= c + 1;
+        end if;
+
+        -- для каждой буквы
+        for j in 1..c
+        loop
+            curr_nick := curr_nick || agents_nicks[curr_letter];  
+            -- след буква будет другой
+            curr_letter := curr_letter + 1;
+        end loop;
+        
+        insert into agent_info(user_id, nickname, is_alive) values (agents_ids[i], curr_nick, true)
+        (agents_ids[i], curr_nick, false); -- умершие агенты 
+        curr_nick := '';
+    end loop; 
 end;
 $$ LANGUAGE plpgsql;
 
@@ -240,16 +274,36 @@ $$ LANGUAGE plpgsql;
 -- select generate_alien_personality(10);
 -- select generate_alien_form(10);
 -- select generate_alien_forms_connect_skills(10);
+-- select generate_agent_info();
+
+CREATE OR REPLACE FUNCTION generate_alien_forms_connect_skills(AlienForms int)
+ RETURNS VOID AS
+$$
+begin
+	perform generate_skill_in_alien_form(generate_alien_form(10));
+end;
+$$ LANGUAGE plpgsql;
 
 
--- create table agent_info
--- (
---     id       serial primary key,
---     user_id  integer references "user" (id) on delete cascade,
---     nickname varchar(64) not null,
---     is_alive boolean     not null,
---     unique (nickname, is_alive)
--- );
+-- TODO короче я не знаю потом
+-- CREATE OR REPLACE FUNCTION alien_info() RETURNS VOID AS
+-- $$
+-- declare 
+--     aliens_ids int[];
+--     aliens int;
+--     alien_not_on_earth_id int;
+-- begin
+--     aliens_ids := ARRAY(select ur.user_id from user_roles ur join role r on ur.role_id = r.id where r.name = 'ALIEN');
+--     aliens := array_length(aliens_ids, 1);
+--     alien_not_on_earth_id := (select id from alien_status where name = 'NOT ON EARTH');
+--     for i in 1..aliens
+--     loop
+--         insert into alien_info(departure_date, alien_status_id, user_id, personality_id) 
+--         values (null, alien_not_on_earth_id, aliens_ids[i],  ????????) ;
+--     end loop; 
+-- end;
+-- $$ LANGUAGE plpgsql;
+
 
 -- create table alien_info
 -- (
