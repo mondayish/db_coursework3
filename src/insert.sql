@@ -179,9 +179,7 @@ begin
 end;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION 
-generate_alien_form(AlienFormsNum int) 
-RETURNS int[] AS
+CREATE OR REPLACE FUNCTION generate_alien_form(AlienFormsNum int) RETURNS int[] AS
 $$
 declare 
     generated_ids int[];
@@ -202,22 +200,48 @@ begin
 end;
 $$ LANGUAGE plpgsql;
 
--- GENERATE 
---select generate_aliens_and_agents(10, 10);
---select generate_planets(10);
---select generate_skills(10);
+select * from skill;
+
+CREATE OR REPLACE FUNCTION generate_skill_in_alien_form(AlienFormsIds int[])
+ RETURNS VOID AS
+$$
+declare 
+    skills_num int;
+    forms_num int;
+    skills_ids int[];
+begin
+    skills_ids := ARRAY(select id from skill);
+    skills_num := array_length(skills_ids, 1);
+    forms_num := array_length(AlienFormsIds, 1);
+    
+    for i in 1..forms_num
+        loop
+            for j in 1..(i % skills_num+1)
+                loop
+                    insert into skill_in_alien_form(alien_form_id, skill_id) 
+                    values(AlienFormsIds[i], skills_ids[j]);
+                end loop;
+        end loop;
+end;
+$$ LANGUAGE plpgsql;
+CREATE OR REPLACE FUNCTION generate_alien_forms_connect_skills(AlienForms int)
+ RETURNS VOID AS
+$$
+begin
+	perform generate_skill_in_alien_form(generate_alien_form(10));
+end;
+$$ LANGUAGE plpgsql;
+
+-- select generate_aliens_and_agents(10, 10);
+-- select generate_planets(10);
+-- select generate_skills(10);
 -- select generate_skills_and_professions(10, 10);
---select generate_locations(10); 
---select generate_alien_personality(10);
---select generate_alien_form(10);
+-- select generate_locations(10); 
+-- select generate_alien_personality(10);
+-- select generate_alien_form(10);
+-- select generate_alien_forms_connect_skills(10);
 
 
--- create table skill_in_alien_form
--- (
---     id            serial primary key,
---     alien_form_id integer references alien_form (id) on delete cascade,
---     skill_id      integer references skill (id) on delete cascade
--- );
 
 -- create table request
 -- (
