@@ -99,8 +99,8 @@ create table alien_form
 create table skill_in_alien_form
 (
     id            serial primary key,
-    alien_form_id integer references alien_form (id) on delete cascade,
-    skill_id      integer references skill (id) on delete cascade,
+    alien_form_id integer references alien_form (id) not null on delete cascade,
+    skill_id      integer references skill (id) not null on delete cascade,
     unique(skill_id, alien_form_id)
 );
 
