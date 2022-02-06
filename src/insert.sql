@@ -242,18 +242,6 @@ $$ LANGUAGE plpgsql;
 -- select generate_alien_forms_connect_skills(10);
 
 
-
--- create table request
--- (
---     id            serial primary key,
---     creator_id    integer references "user" (id) on delete set null,
---     executor_id   integer references "user" (id) on delete set null,
---     type_id       integer references request_type (id) on delete set null,
---     status_id     integer references request_status (id) on delete set null,
---     create_date   timestamp check ( create_date <= current_timestamp ),
---     alien_form_id integer references alien_form (id) on delete cascade
--- );
-
 -- create table agent_info
 -- (
 --     id       serial primary key,
@@ -271,6 +259,19 @@ $$ LANGUAGE plpgsql;
 --     user_id         integer references "user" (id) on delete cascade,
 --     personality_id  integer references alien_personality (id) on delete set null
 -- );
+
+
+-- create table request
+-- (
+--     id            serial primary key,
+--     creator_id    integer references "user" (id) on delete set null,
+--     executor_id   integer references "user" (id) on delete set null,
+--     type_id       integer references request_type (id) on delete set null,
+--     status_id     integer references request_status (id) on delete set null,
+--     create_date   timestamp check ( create_date <= current_timestamp ),
+--     alien_form_id integer references alien_form (id) on delete cascade
+-- );
+
 
 -- create table warning
 -- (
