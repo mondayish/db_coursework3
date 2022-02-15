@@ -189,5 +189,45 @@ begin
 end;
 $$ language plpgsql;
 
-create trigger check_alive_nickname_duplicates after insert on agent_info
+create trigger check_alive_nickname_duplicates after insert or update on agent_info
     for each row execute procedure check_alive_nickname_duplicates();
+
+
+-- Триггер для проверки того, что тип заявки и статус пришельца совместимы
+create or replace function check_request_type_alien_status() returns trigger as $$
+declare
+    visit_type_id integer := (select id from request_status where name = 'VISIT');
+    on_earth_st_id integer := (select id from alien_status where name = 'ON EARTH');
+    not_on_earth_st_id integer := (select id from alien_status where name = 'NOT ON EARTH');
+    st_id integer := (select alien_status_id from alien_info
+                        where user_id = (select user_id from alien_form where id = new.alien_form_id));
+begin
+    if new.type_id = visit_type_id and st_id != not_on_earth_st_id then
+        raise exception 'request with type "VISIT" can be created only for alien with status "NOT ON EARTH"';
+    end if;
+    if new.type_id != visit_type_id and st_id != on_earth_st_id then
+        raise exception 'request with type "WARNING", "NEUTRALIZATION", "DEPORTATION" can be created only for alien with status "ON EARTH"';
+    end if;
+    return new;
+end;
+$$ language plpgsql;
+
+create trigger check_request_type_alien_status after insert or update on request
+    for each row execute procedure check_request_type_alien_status();
+
+
+-- Триггер для проверки того, что пришелец подает заявку на визит для себя
+create or replace function check_request_alien_form() returns trigger as $$
+declare
+    visit_type_id integer := (select id from request_status where name = 'VISIT');
+    alien_form_user_id integer := (select user_id from alien_form where id = new.alien_form_id);
+begin
+    if new.type_id = visit_type_id and creator_id != alien_form_user_id then
+        raise exception 'creator_id in request with type "VISIT" must be = user_id in alien_form';
+    end if;
+    return new;
+end;
+$$ language plpgsql;
+
+create trigger check_request_alien_form after insert or update on request
+    for each row execute procedure check_request_alien_form();

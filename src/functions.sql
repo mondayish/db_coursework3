@@ -30,7 +30,7 @@ $$ language plpgsql;
 
 
 -- Функция получения всех заявок, которые надо обработать данному агенту
-create or replace function get_requests_by_agent_id(agent_id integer)
+create or replace function get_requests_by_agent_id(agent_id integer, req_type varchar(64))
     returns table
             (
                 request_id     integer,
@@ -48,7 +48,8 @@ begin
                           join "user" u on r.creator_id = u.id
                           join request_type rt on r.type_id = rt.id
                           join request_status rs on r.status_id = rs.id
-                 where r.executor_id = (select user_id from agent_info where id = agent_id);
+                 where (agent_id is null and executor_id is null) or
+                       (r.executor_id = (select user_id from agent_info where id = agent_id) and (rt.name = req_type or req_type is null));
 end;
 $$ language plpgsql;
 

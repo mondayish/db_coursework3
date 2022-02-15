@@ -3,7 +3,7 @@ create table "user"
     id         serial primary key,
     username   varchar(64) not null unique,
     passw_hash varchar(64) not null,
-    user_photo bytea,
+    user_photo bytea
 );
 
 create table role
