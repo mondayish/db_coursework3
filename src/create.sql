@@ -18,7 +18,7 @@ create table user_roles
     id      serial primary key,
     user_id integer references "user" (id) on delete cascade,
     role_id integer references role (id) on delete cascade,
-    unique(user_id, role_id)
+    unique (user_id, role_id)
 );
 
 create table request_type
@@ -58,7 +58,7 @@ create table skill_in_profession
     id            serial primary key,
     profession_id integer references profession (id) on delete cascade,
     skill_id      integer references skill (id) on delete cascade,
-    unique(profession_id, skill_id)
+    unique (profession_id, skill_id)
 );
 
 create table location
@@ -90,9 +90,9 @@ create table alien_form
 (
     id            serial primary key,
     user_id       integer references "user" (id) on delete cascade not null,
-    planet_id     integer     references planet (id) on delete set null,
-    visit_purpose varchar(64) not null,
-    stay_time     integer     not null,
+    planet_id     integer                                          references planet (id) on delete set null,
+    visit_purpose varchar(64)                                      not null,
+    stay_time     integer                                          not null,
     comment       text
 );
 
@@ -100,8 +100,8 @@ create table skill_in_alien_form
 (
     id            serial primary key,
     alien_form_id integer references alien_form (id) on delete cascade not null,
-    skill_id      integer references skill (id) on delete cascade not null,
-    unique(skill_id, alien_form_id)
+    skill_id      integer references skill (id) on delete cascade      not null,
+    unique (skill_id, alien_form_id)
 );
 
 create table request
@@ -120,8 +120,7 @@ create table agent_info
     id       serial primary key,
     user_id  integer references "user" (id) on delete cascade,
     nickname varchar(64) not null,
-    is_alive boolean     not null default true,
-    unique (nickname, is_alive)
+    is_alive boolean     not null default true
 );
 
 create table alien_info
