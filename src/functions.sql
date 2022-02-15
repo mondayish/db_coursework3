@@ -128,26 +128,21 @@ $$ language plpgsql;
 
 -- Функция для получения всех профессий, подходящих по навыкам, отсортированные по кол-ву нужных навыков
 create or replace function get_professions_by_skills(skills integer[])
-    returns table
-            (
-                id   integer,
-                name varchar(64)
-            )
+    returns integer[]
 as
 $$
 declare
-    profession_ids integer[];
+    profession_ids integer[] := array[]::integer[];
     prof_row profession%rowtype;
 begin
-    for prof_row in (select * from profession
-        join skill_in_profession sip on profession.id = sip.profession_id )
-    order by (select count(*) from skill_in_profession where profession_id = profession.id) desc
+    for prof_row in (select p.id, p.name, count(sip.skill_id) from profession p
+                        join skill_in_profession sip on p.id = sip.profession_id group by p.id
+                        order by count(sip.skill_id) desc)
         loop
             if array(select skill_id from skill_in_profession where profession_id = prof_row.id) <@ skills then
-                select array_agg(prof_row.id) into profession_ids;
+                profession_ids := profession_ids || prof_row.id;
             end if;
         end loop;
-    return query select * from profession where profession.id = any(profession_ids);
+    return profession_ids;
 end;
 $$ language plpgsql;
-
