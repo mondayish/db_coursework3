@@ -4,7 +4,6 @@ create table "user"
     username   varchar(64) not null unique,
     passw_hash varchar(64) not null,
     user_photo bytea,
-    at_earth   boolean     not null
 );
 
 create table role
