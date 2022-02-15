@@ -367,7 +367,8 @@ begin
 end;
 $$ LANGUAGE plpgsql;
 
-select * from alien_info;
+select *
+from alien_info;
 
 CREATE OR REPLACE FUNCTION generate_alien_info() RETURNS VOID AS
 $$
@@ -396,10 +397,51 @@ end;
 $$ LANGUAGE plpgsql;
 
 
+CREATE OR REPLACE FUNCTION generate_agent_alien() RETURNS VOID AS
+$$
+declare
+    agent_info_ids  int[] := ARRAY(select id
+                                   from agent_info);
+    aliens_info_ids int[] := ARRAY(select id
+                                   from alien_info);
+begin
+
+    for i in 1..array_length(agent_info_ids, 1)
+        loop
+            for j in 1..i % array_length(aliens_info_ids, 1)
+                loop
+                    insert into agent_alien(alien_info_id, agent_info_id)
+                    values (aliens_info_ids[i], agent_info_ids[j]);
+                end loop;
+        end loop;
+end;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION generate_tracking_report(DaysOfReporting int) RETURNS VOID AS
+$$
+declare
+    agent_aliens_ids int[] := ARRAY(select id
+                                    from agent_alien);
+    curr_date        date  := current_date;
+begin
+
+    for i in 1..DaysOfReporting
+        loop
+            for j in 1..(1 + floor(1 + random() * array_length(agent_aliens_ids, 1)))
+                loop
+                    insert into tracking_report(report_date, behavior, description, agent_alien_id)
+                    values (curr_date,
+                            floor(random() * 10)::int, md5(i::text),
+                            agent_aliens_ids[floor(random() * array_length(agent_aliens_ids, 1))::int]);
+                    curr_date := (curr_date - INTERVAL '1 DAY')::date;
+                end loop;
+        end loop;
+end;
+$$ LANGUAGE plpgsql;
 
 select generate_aliens_and_agents(200, 20);
 select generate_planets(10);
-
 select generate_skills_and_professions(20, 20);
 select generate_locations(20);
 select generate_alien_personality(100);
@@ -408,21 +450,5 @@ select generate_alien_forms_connect_skills(200);
 select generate_request();
 select generate_alien_info();
 select generate_warning(200);
-
--- create table agent_alien
--- (
---     id            serial primary key,
---     alien_info_id integer references alien_info (id) on delete cascade,
---     agent_info_id integer references agent_info (id) on delete cascade,
---     start_date    date not null default current_date,
---     end_date      date
--- );
-
--- create table tracking_report
--- (
---     id             serial primary key,
---     report_date    date    not null default current_date,
---     behavior       integer not null check ( behavior >= 0 and behavior <= 10 ),
---     description    text,
---     agent_alien_id integer references agent_alien (id) on delete cascade
--- );
+select generate_agent_alien();
+select generate_tracking_report(365);
