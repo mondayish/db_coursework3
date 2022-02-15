@@ -294,17 +294,51 @@ $$ LANGUAGE plpgsql;
 -- );
 
 
--- create table request
--- (
---     id            serial primary key,
---     creator_id    integer references "user" (id) on delete set null,
---     executor_id   integer references "user" (id) on delete set null,
---     type_id       integer references request_type (id) on delete set null,
---     status_id     integer references request_status (id) on delete set null,
---     create_date   timestamp check ( create_date <= current_timestamp ),
---     alien_form_id integer references alien_form (id) on delete cascade
--- );
 
+select from generate_request();
+CREATE OR REPLACE FUNCTION generate_request()
+RETURNS VOID AS
+$$
+declare
+    temp int := 1;
+    aliens_ids int[] := ARRAY(select user_id from get_all_users_with_role('ALIEN'));
+    agents_ids int[] := ARRAY(select user_id from get_all_users_with_role('AGENT'));
+    alien_forms_ids int[] := ARRAY(select id from alien_form where user_id = any (aliens_ids));
+    visit_id int := (select id from request_type where name='VISIT');
+    warning_id int := (select id from request_type where name='WARNING');
+    neutralization_id int := (select id from request_type where name='NEUTRALIZATION');
+    deportation_id int := (select id from request_type where name='DEPORTATION');
+    not_on_earth int := (select id from alien_status where name = 'NOT ON EARTH');
+    on_earth int := (select id from alien_status where name = 'ON EARTH');
+    forms int := array_length(alien_forms_ids, 1);
+begin
+    for i in 1..forms
+        loop
+            case i % 4
+                when  0 -- VISIT
+                    then insert into request(creator_id, executor_id, type_id, status_id, alien_form_id)
+                    values (i, null, visit_id, not_on_earth, alien_forms_ids[(temp % forms) + 1]);
+                when  1 -- WARNING
+                    then insert into request(creator_id, executor_id, type_id, status_id, alien_form_id)
+                    values (1+floor(random()*array_length(agents_ids, 1))::int,
+                            1+floor(random()*array_length(agents_ids, 1))::int,
+                            warning_id, not_on_earth, alien_forms_ids[(temp % forms) + 1]);
+                when  2 --neutralization
+                    then insert into request(creator_id, executor_id, type_id, status_id, alien_form_id)
+                    values (1+floor(random()*array_length(agents_ids, 1))::int,
+                            1+floor(random()*array_length(agents_ids, 1))::int,
+                            neutralization_id, on_earth, alien_forms_ids[(temp % forms) + 1]);
+                select * from "user";
+                when 3
+                    then insert into request(creator_id, executor_id, type_id, status_id, alien_form_id)
+                    values (1+floor(random()*array_length(agents_ids, 1))::int,
+                            1+floor(random()*array_length(agents_ids, 1))::int,
+                            deportation_id, on_earth, alien_forms_ids[(temp % forms) + 1]);
+            end case;
+            temp := temp + 1;
+        end loop;
+end;
+$$ LANGUAGE plpgsql;
 
 -- create table warning
 -- (
