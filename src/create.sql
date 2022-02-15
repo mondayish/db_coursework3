@@ -134,7 +134,7 @@ create table alien_info
 create table warning
 (
     id           serial primary key,
-    alien_id     integer references alien_info (id) not null on delete cascade,
+    alien_id     integer not null references alien_info (id) on delete cascade,
     name         varchar(64) not null,
     description  text,
     warning_date date default current_date
