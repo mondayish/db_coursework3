@@ -160,3 +160,19 @@ $$ language plpgsql;
 
 create trigger set_departure_date after update on alien_info
     for each row execute procedure set_departure_date();
+
+-- Триггер для проверки дублей в alien_form если заявка еще на рассмотрении
+create or replace function check_pending_form_duplicates() returns trigger as $$
+declare
+    pending_status_id varchar(64) := (select id from request_status where name = 'PENDING');
+    visit_type_id varchar(64) := (select id from request_type where name = 'VISIT');
+begin
+    if exists(select 1 from request where creator_id = new.user_id and status_id = pending_status_id and type_id = visit_type_id) then
+        raise exception 'cannot insert new alien_form if there is pending request exists';
+    end if;
+    return new;
+end;
+$$ language plpgsql;
+
+create trigger check_pending_form_duplicates after insert on alien_form
+    for each row execute procedure check_pending_form_duplicates();
