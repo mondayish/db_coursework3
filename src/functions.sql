@@ -63,9 +63,10 @@ create or replace function get_all_users_with_role(role varchar(32))
 as
 $$
 begin
-    return query select ur.user_id
+    return query select ur.user_id, u.username
                  from user_roles ur
                           join role r on ur.role_id = r.id
+                          join "user" u on ur.user_id = u.id
                  where r.name = role;
 end;
 $$ language plpgsql;
@@ -75,26 +76,34 @@ $$ language plpgsql;
 create or replace function get_alien_info_by_user_id(uid integer)
     returns table
             (
-                first_name    varchar(64),
-                second_name   varchar(64),
-                age           integer,
-                profession    varchar(64),
-                city          varchar(64),
-                country       varchar(64),
-                person_photo  bytea,
+                first_name     varchar(64),
+                second_name    varchar(64),
+                age            integer,
+                profession     varchar(64),
+                city           varchar(64),
+                country        varchar(64),
+                person_photo   bytea,
                 departure_date date,
-                alien_status varchar(32)
+                alien_status   varchar(32)
             )
 as
 $$
 begin
-    return query select ap.first_name, ap.second_name, ap.age, p.name, l.city, l.country, ap.person_photo, ai.departure_date, als.name
+    return query select ap.first_name,
+                        ap.second_name,
+                        ap.age,
+                        p.name,
+                        l.city,
+                        l.country,
+                        ap.person_photo,
+                        ai.departure_date,
+                        als.name
                  from alien_info ai
-                     join alien_personality ap on ai.personality_id = ap.id
-                     join profession p on ap.profession_id = p.id
-                     join location l on ap.location_id = l.id
-                     join alien_status als on ai.alien_status_id = als.id
-    where ai.user_id = uid;
+                          join alien_personality ap on ai.personality_id = ap.id
+                          join profession p on ap.profession_id = p.id
+                          join location l on ap.location_id = l.id
+                          join alien_status als on ai.alien_status_id = als.id
+                 where ai.user_id = uid;
 end;
 $$ language plpgsql;
 
@@ -111,6 +120,34 @@ as
 $$
 begin
     return query select name, description, warning_date
-                 from warning where alien_id = (select id from alien_info where user_id = uid);
+                 from warning
+                 where alien_id = (select id from alien_info where user_id = uid);
 end;
 $$ language plpgsql;
+
+
+-- Функция для получения всех профессий, подходящих по навыкам, отсортированные по кол-ву нужных навыков
+create or replace function get_professions_by_skills(skills integer[])
+    returns table
+            (
+                id   integer,
+                name varchar(64)
+            )
+as
+$$
+declare
+    profession_ids integer[];
+    prof_row profession%rowtype;
+begin
+    for prof_row in (select * from profession
+        join skill_in_profession sip on profession.id = sip.profession_id )
+    order by (select count(*) from skill_in_profession where profession_id = profession.id) desc
+        loop
+            if array(select skill_id from skill_in_profession where profession_id = prof_row.id) <@ skills then
+                select array_agg(prof_row.id) into profession_ids;
+            end if;
+        end loop;
+    return query select * from profession where profession.id = any(profession_ids);
+end;
+$$ language plpgsql;
+
