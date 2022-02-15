@@ -1,49 +1,58 @@
-insert into request_type values (1, 'VISIT'),
-                                (2, 'WARNING'),
-                                (3, 'NEUTRALIZATION'),
-                                (4, 'DEPORTATION');
+insert into request_type
+values (1, 'VISIT'),
+       (2, 'WARNING'),
+       (3, 'NEUTRALIZATION'),
+       (4, 'DEPORTATION');
 
-insert into request_status values (1, 'PENDING'),
-                                  (2, 'APPROVED'),
-                                  (3, 'REJECTED');
+insert into request_status
+values (1, 'PENDING'),
+       (2, 'APPROVED'),
+       (3, 'REJECTED');
 
-insert into alien_status values (1, 'NOT ON EARTH'),
-                                (2, 'ON EARTH'),
-                                (3, 'DEPORTED'),
-                                (4, 'NEUTRALIZED');
+insert into alien_status
+values (1, 'NOT ON EARTH'),
+       (2, 'ON EARTH'),
+       (3, 'DEPORTED'),
+       (4, 'NEUTRALIZED');
 
-insert into role values (1, 'AGENT'),
-                        (2, 'ALIEN');
+insert into role
+values (1, 'AGENT'),
+       (2, 'ALIEN');
+
 
 
 CREATE OR REPLACE FUNCTION generate_user(UserNum int) RETURNS int[] AS
 $$
 declare
     generated_users_ids int[];
-	curr_user_id bigint;
+    curr_user_id        bigint;
 begin
-	select last_value from user_id_seq into curr_user_id;
-	if curr_user_id = 1 then
-		perform nextval('user_id_seq');
-	end if;
+    select last_value from user_id_seq into curr_user_id;
+    if curr_user_id = 1 then
+        perform nextval('user_id_seq');
+    end if;
     with ins as (
         insert into "user" (USERNAME, PASSW_HASH, USER_PHOTO)
-        select md5(cast(currval('user_id_seq') as text)), md5(i::text), null
-        from generate_series(1, $1) s(i) returning id
+            select md5(cast(currval('user_id_seq') as text)), md5(i::text), null
+            from generate_series(1, $1) s(i) returning id
     )
-    select array_agg(id) into generated_users_ids from ins;
+    select array_agg(id)
+    into generated_users_ids
+    from ins;
     return generated_users_ids;
 end;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION generate_user_roles(RoleStr varchar(32), UsersIds int[]) RETURNS VOID AS
 $$
-declare role_id int;
+declare
+    role int := (select id
+                 from role
+                 where name = RoleStr);
 begin
-	select id from role where name=RoleStr into role_id;
     for i in 1..array_length(UsersIds, 1)
         loop
-            insert into user_roles(user_id, role_id) values(UsersIds[i], role_id);
+            insert into user_roles(user_id, role_id) values (UsersIds[i], role);
         end loop;
 end;
 $$ LANGUAGE plpgsql;
@@ -52,8 +61,8 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION generate_aliens_and_agents(AliensNum int, AgentsNum int) RETURNS VOID AS
 $$
 begin
-	perform generate_user_roles('AGENT', generate_user($1));
-	perform generate_user_roles('ALIEN', generate_user($2));
+    perform generate_user_roles('ALIEN', generate_user($1));
+    perform generate_user_roles('AGENT', generate_user($2));
 end;
 $$ LANGUAGE plpgsql;
 
@@ -63,13 +72,15 @@ $$
 declare
     generated_planets_ids int[];
 begin
-	perform nextval('planet_id_seq');
+    perform nextval('planet_id_seq');
     with ins as (
-        insert into planet(name, race)
-        select md5(cast(currval('planet_id_seq') as text)), md5(i::text)
-        from generate_series(1, $1) s(i) returning id
+        insert into planet (name, race)
+            select md5(cast(currval('planet_id_seq') as text)), md5(i::text)
+            from generate_series(1, $1) s(i) returning id
     )
-    select array_agg(id) into generated_planets_ids from ins;
+    select array_agg(id)
+    into generated_planets_ids
+    from ins;
     return generated_planets_ids;
 end;
 $$ LANGUAGE plpgsql;
@@ -83,11 +94,13 @@ declare
 begin
     perform nextval('skill_id_seq');
     with ins as (
-        insert into skill(name)
-        select md5(cast(currval('skill_id_seq') as text))
-        from generate_series(1, $1) s(i) returning id
+        insert into skill (name)
+            select md5(cast(currval('skill_id_seq') as text))
+            from generate_series(1, $1) s(i) returning id
     )
-    select array_agg(id) into generated_skills_ids from ins;
+    select array_agg(id)
+    into generated_skills_ids
+    from ins;
     return generated_skills_ids;
 end;
 $$ LANGUAGE plpgsql;
@@ -100,11 +113,13 @@ declare
 begin
     perform nextval('profession_id_seq');
     with ins as (
-        insert into profession(name)
-        select md5(cast(currval('profession_id_seq') as text))
-        from generate_series(1, $1) s(i) returning id
+        insert into profession (name)
+            select md5(cast(currval('profession_id_seq') as text))
+            from generate_series(1, $1) s(i) returning id
     )
-    select array_agg(id) into generated_professions_ids from ins;
+    select array_agg(id)
+    into generated_professions_ids
+    from ins;
     return generated_professions_ids;
 end;
 $$ LANGUAGE plpgsql;
@@ -113,7 +128,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION generate_skill_in_profession(SkillsIds int[], ProfessionsIds int[]) RETURNS VOID AS
 $$
 declare
-    skills_num int;
+    skills_num      int;
     professions_num int;
 begin
     professions_num = array_length(ProfessionsIds, 1);
@@ -125,7 +140,7 @@ begin
             for j in 1..i % skills_num
                 loop
                     insert into skill_in_profession(profession_id, skill_id)
-                    values(ProfessionsIds[i], SkillsIds[j]);
+                    values (ProfessionsIds[i], SkillsIds[j]);
                 end loop;
         end loop;
 end;
@@ -134,7 +149,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION generate_skills_and_professions(SkillsNum int, ProfessionsNum int) RETURNS VOID AS
 $$
 begin
-	perform generate_skill_in_profession(generate_skills(SkillsNum), generate_professions(ProfessionsNum));
+    perform generate_skill_in_profession(generate_skills(SkillsNum), generate_professions(ProfessionsNum));
 end;
 $$ LANGUAGE plpgsql;
 
@@ -146,33 +161,43 @@ declare
 begin
     perform nextval('location_id_seq');
     with ins as (
-        insert into location(city, country)
-        select md5(cast(currval('location_id_seq') as text)), md5(cast(currval('location_id_seq') as text))
-        from generate_series(1, $1) s(i) returning id
+        insert into location (city, country)
+            select md5(cast(currval('location_id_seq') as text)), md5(cast(currval('location_id_seq') as text))
+            from generate_series(1, $1) s(i) returning id
     )
-    select array_agg(id) into generated_ids from ins;
+    select array_agg(id)
+    into generated_ids
+    from ins;
     return generated_ids;
 end;
 $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION
-generate_alien_personality(PersonalityNum int)
-RETURNS int[] AS
+    generate_alien_personality(PersonalityNum int)
+    RETURNS int[] AS
 $$
 declare
-    generated_ids int[];
-    professions_ids int[] := ARRAY(select id from profession);
-    locations_ids int[] := ARRAY(select id from location);
+    generated_ids   int[];
+    professions_ids int[] := ARRAY(select id
+                                   from profession);
+    locations_ids   int[] := ARRAY(select id
+                                   from location);
 begin
     with ins as (
-        insert into alien_personality(first_name, second_name,
-        age, profession_id, location_id, person_photo)
-        select 'Ivan', 'Ivanov', 25, professions_ids[1+floor(random()*array_length(professions_ids, 1))::int],
-         locations_ids[1+floor(random()*array_length(locations_ids, 1))::int], E'\\xDEADBEEF'
-        from generate_series(1, $1) s(i) returning id
+        insert into alien_personality (first_name, second_name,
+                                       age, profession_id, location_id, person_photo)
+            select 'Ivan',
+                   'Ivanov',
+                   25,
+                   professions_ids[1 + floor(random() * array_length(professions_ids, 1))::int],
+                   locations_ids[1 + floor(random() * array_length(locations_ids, 1))::int],
+                   E'\\xDEADBEEF'
+            from generate_series(1, $1) s(i) returning id
     )
-    select array_agg(id) into generated_ids from ins;
+    select array_agg(id)
+    into generated_ids
+    from ins;
     return generated_ids;
 end;
 $$ LANGUAGE plpgsql;
@@ -181,46 +206,53 @@ CREATE OR REPLACE FUNCTION generate_alien_form(AlienFormsNum int) RETURNS int[] 
 $$
 declare
     generated_ids int[];
-    planets_ids int[] := ARRAY(select id from planet);;
-    user_ids int[] := ARRAY(select ur.user_id from user_roles ur join role r on r.id = ur.role_id where r.name = 'ALIEN');
+    planets_ids   int[] := ARRAY(select id
+                                 from planet);
+    user_ids      int[] := ARRAY(select user_id
+                                 from get_all_users_with_role('ALIEN'));
 begin
     with ins as (
-        insert into alien_form(user_id, planet_id, visit_purpose, stay_time, comment)
-        select user_ids[1+floor(random()*array_length(user_ids, 1))::int],
-        planets_ids[1+floor(random()*array_length(planets_ids, 1))::int], md5(i::text), floor(random()*500+1)::int,
-        md5(md5(i::text))
-        from generate_series(1, $1) s(i) returning id
+        insert into alien_form (user_id, planet_id, visit_purpose, stay_time, comment)
+            select user_ids[1 + floor(random() * array_length(user_ids, 1))::int],
+                   planets_ids[1 + floor(random() * array_length(planets_ids, 1))::int],
+                   md5(i::text),
+                   floor(random() * 500 + 1)::int,
+                   md5(md5(i::text))
+            from generate_series(1, $1) s(i) returning id
     )
-    select array_agg(id) into generated_ids from ins;
+    select array_agg(id)
+    into generated_ids
+    from ins;
     return generated_ids;
 end;
 $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION generate_skill_in_alien_form(AlienFormsIds int[])
- RETURNS VOID AS
+    RETURNS VOID AS
 $$
 declare
-    skills_ids int[] := ARRAY(select id from skill);
-    skills_num int := array_length(skills_ids, 1);
-    forms_num int := array_length(AlienFormsIds, 1);
+    skills_ids int[] := ARRAY(select id
+                              from skill);
+    skills_num int   := array_length(skills_ids, 1);
+    forms_num  int   := array_length(AlienFormsIds, 1);
 begin
     for i in 1..forms_num
         loop
-            for j in 1..(i % skills_num+1)
+            for j in 1..(i % skills_num + 1)
                 loop
                     insert into skill_in_alien_form(alien_form_id, skill_id)
-                    values(AlienFormsIds[i], skills_ids[j]);
+                    values (AlienFormsIds[i], skills_ids[j]);
                 end loop;
         end loop;
 end;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION generate_alien_forms_connect_skills(AlienForms int)
- RETURNS VOID AS
+    RETURNS VOID AS
 $$
 begin
-	perform generate_skill_in_alien_form(generate_alien_form(10));
+    perform generate_skill_in_alien_form(generate_alien_form($1));
 end;
 $$ LANGUAGE plpgsql;
 
@@ -228,126 +260,154 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION generate_agent_info() RETURNS VOID AS
 $$
 declare
-    agents_ids int[] := ARRAY(select ur.user_id from user_roles ur join role r on ur.role_id = r.id where r.name = 'AGENT');
-    agents int := array_length(agents_ids, 1);
-    agents_nicks char[] = '{A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z}';
-    c int = 1;
-    curr_letter int = 1;
-    curr_nick varchar(64) = '';
+    agents_ids   int[]       := ARRAY(select user_id
+                                      from get_all_users_with_role('AGENT'));
+    agents       int         := array_length(agents_ids, 1);
+    agents_nicks char[]      = '{A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z}';
+    c            int         = 1;
+    curr_letter  int         = 1;
+    curr_nick    varchar(64) = '';
 begin
     for i in 1..agents
-    loop
-        -- если закончились ники следующие делаем с +1 буквой
-        if c = array_length(agents_nicks, 1) then c:= c + 1;
-        end if;
-
-        -- для каждой буквы
-        for j in 1..c
         loop
-            curr_nick := curr_nick || agents_nicks[curr_letter];
-            -- след буква будет другой
-            curr_letter := curr_letter + 1;
+            -- если закончились ники следующие делаем с +1 буквой
+            if c = array_length(agents_nicks, 1) then
+                c := c + 1;
+            end if;
+
+            -- для каждой буквы
+            for j in 1..c
+                loop
+                    curr_nick := curr_nick || agents_nicks[curr_letter];
+                    -- след буква будет другой
+                    curr_letter := curr_letter + 1;
+                end loop;
+
+            insert into agent_info(user_id, nickname, is_alive)
+            values (agents_ids[i], curr_nick, true),
+                   (agents_ids[i], curr_nick, false); -- умершие агенты
+            curr_nick := '';
         end loop;
-
-        insert into agent_info(user_id, nickname, is_alive) values (agents_ids[i], curr_nick, true),
-                                                                   (agents_ids[i], curr_nick, false); -- умершие агенты
-        curr_nick := '';
-    end loop;
 end;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION generate_alien_forms_connect_skills(AlienForms int)
- RETURNS VOID AS
-$$
-begin
-	perform generate_skill_in_alien_form(generate_alien_form(10));
-end;
-$$ LANGUAGE plpgsql;
 
--- TODO короче я не знаю потом
--- CREATE OR REPLACE FUNCTION alien_info() RETURNS VOID AS
--- $$
--- declare
---     aliens_ids int[];
---     aliens int;
---     alien_not_on_earth_id int;
--- begin
---     aliens_ids := ARRAY(select ur.user_id from user_roles ur join role r on ur.role_id = r.id where r.name = 'ALIEN');
---     aliens := array_length(aliens_ids, 1);
---     alien_not_on_earth_id := (select id from alien_status where name = 'NOT ON EARTH');
---     for i in 1..aliens
---     loop
---         insert into alien_info(departure_date, alien_status_id, user_id, personality_id)
---         values (null, alien_not_on_earth_id, aliens_ids[i],  ????????) ;
---     end loop;
--- end;
--- $$ LANGUAGE plpgsql;
-
-
--- create table alien_info
--- (
---     id              serial primary key,
---     departure_date  date,
---     alien_status_id integer references alien_status (id) on delete set null,
---     user_id         integer references "user" (id) on delete cascade,
---     personality_id  integer references alien_personality (id) on delete set null
--- );
-
-
-
-select from generate_request();
 CREATE OR REPLACE FUNCTION generate_request()
-RETURNS VOID AS
+    RETURNS VOID AS
 $$
 declare
-    temp int := 1;
-    aliens_ids int[] := ARRAY(select user_id from get_all_users_with_role('ALIEN'));
-    agents_ids int[] := ARRAY(select user_id from get_all_users_with_role('AGENT'));
-    alien_forms_ids int[] := ARRAY(select id from alien_form where user_id = any (aliens_ids));
-    visit_id int := (select id from request_type where name='VISIT');
-    warning_id int := (select id from request_type where name='WARNING');
-    neutralization_id int := (select id from request_type where name='NEUTRALIZATION');
-    deportation_id int := (select id from request_type where name='DEPORTATION');
-    not_on_earth int := (select id from alien_status where name = 'NOT ON EARTH');
-    on_earth int := (select id from alien_status where name = 'ON EARTH');
-    forms int := array_length(alien_forms_ids, 1);
+    temp              int   := 1;
+    aliens_ids        int[] := ARRAY(select user_id
+                                     from get_all_users_with_role('ALIEN'));
+    agents_ids        int[] := ARRAY(select user_id
+                                     from get_all_users_with_role('AGENT'));
+    alien_forms_ids   int[] := ARRAY(select id
+                                     from alien_form
+                                     where user_id = any (aliens_ids));
+    visit_id          int   := (select id
+                                from request_type
+                                where name = 'VISIT');
+    warning_id        int   := (select id
+                                from request_type
+                                where name = 'WARNING');
+    neutralization_id int   := (select id
+                                from request_type
+                                where name = 'NEUTRALIZATION');
+    deportation_id    int   := (select id
+                                from request_type
+                                where name = 'DEPORTATION');
+    not_on_earth      int   := (select id
+                                from alien_status
+                                where name = 'NOT ON EARTH');
+    on_earth          int   := (select id
+                                from alien_status
+                                where name = 'ON EARTH');
+    forms             int   := array_length(alien_forms_ids, 1);
 begin
     for i in 1..forms
         loop
-            case i % 4
-                when  0 -- VISIT
-                    then insert into request(creator_id, executor_id, type_id, status_id, alien_form_id)
-                    values (i, null, visit_id, not_on_earth, alien_forms_ids[(temp % forms) + 1]);
-                when  1 -- WARNING
-                    then insert into request(creator_id, executor_id, type_id, status_id, alien_form_id)
-                    values (1+floor(random()*array_length(agents_ids, 1))::int,
-                            1+floor(random()*array_length(agents_ids, 1))::int,
-                            warning_id, not_on_earth, alien_forms_ids[(temp % forms) + 1]);
-                when  2 --neutralization
-                    then insert into request(creator_id, executor_id, type_id, status_id, alien_form_id)
-                    values (1+floor(random()*array_length(agents_ids, 1))::int,
-                            1+floor(random()*array_length(agents_ids, 1))::int,
-                            neutralization_id, on_earth, alien_forms_ids[(temp % forms) + 1]);
-                select * from "user";
-                when 3
-                    then insert into request(creator_id, executor_id, type_id, status_id, alien_form_id)
-                    values (1+floor(random()*array_length(agents_ids, 1))::int,
-                            1+floor(random()*array_length(agents_ids, 1))::int,
-                            deportation_id, on_earth, alien_forms_ids[(temp % forms) + 1]);
-            end case;
+            if (i % 4 = 0) then -- VISIT
+                insert into request(creator_id, executor_id, type_id, status_id, alien_form_id)
+                values (aliens_ids[i], null, visit_id, not_on_earth, alien_forms_ids[(temp % forms) + 1]);
+
+            elsif (i % 4 = 1) then -- WARNING
+                insert into request(creator_id, executor_id, type_id, status_id, alien_form_id)
+                values (agents_ids[1 + floor(random() * array_length(agents_ids, 1))::int],
+                        agents_ids[1 + floor(random() * array_length(agents_ids, 1))::int],
+                        warning_id, not_on_earth, alien_forms_ids[(temp % forms) + 1]);
+            elsif (i % 4 = 2) then --neutralization
+                insert into request(creator_id, executor_id, type_id, status_id, alien_form_id)
+                values (agents_ids[1 + floor(random() * array_length(agents_ids, 1))::int],
+                        agents_ids[1 + floor(random() * array_length(agents_ids, 1))::int],
+                        neutralization_id, on_earth, alien_forms_ids[(temp % forms) + 1]);
+            elsif (i % 4 = 3) then
+                insert into request(creator_id, executor_id, type_id, status_id, alien_form_id)
+                values (agents_ids[1 + floor(random() * array_length(agents_ids, 1))::int],
+                        agents_ids[1 + floor(random() * array_length(agents_ids, 1))::int],
+                        deportation_id, on_earth, alien_forms_ids[(temp % forms) + 1]);
+            end if;
             temp := temp + 1;
         end loop;
 end;
 $$ LANGUAGE plpgsql;
 
--- create table warning
--- (
---     id           serial primary key,
---     alien_id     integer references alien_info (id) on delete cascade,
---     name         varchar(64) not null,
---     description  text,
---     warning_date date
--- );
+
+CREATE OR REPLACE FUNCTION generate_warning(WarningNumber int)
+    RETURNS VOID AS
+$$
+declare
+    aliens_ids int[] := ARRAY(select id
+                              from alien_info);
+begin
+    insert into warning(alien_id, name, description)
+    select aliens_ids[1 + floor(random() * array_length(aliens_ids, 1))::int],
+           md5(i::text),
+           md5(i::text)
+    from generate_series(1, $1) s(i);
+end;
+$$ LANGUAGE plpgsql;
+
+select * from alien_info;
+
+CREATE OR REPLACE FUNCTION generate_alien_info() RETURNS VOID AS
+$$
+declare
+    aliens_ids        int[] := ARRAY(select user_id
+                                     from get_all_users_with_role('ALIEN'));
+    aliens            int   := array_length(aliens_ids, 1);
+    alien_status_ids  int[] := ARRAY(select id
+                                     from alien_status);
+    personalities_ids int[] := ARRAY(select id
+                                     from alien_personality);
+    temp              int   := 1;
+begin
+
+    for i in 1..aliens
+        loop
+            insert into alien_info(departure_date, alien_status_id, user_id, personality_id)
+            values (null, alien_status_ids[1 + floor(random() * array_length(alien_status_ids, 1))::int],
+                    aliens_ids[i], personalities_ids[temp]);
+            temp := temp + 1;
+            if temp > (array_length(personalities_ids, 1)) then
+                EXIT;
+            end if;
+        end loop;
+end;
+$$ LANGUAGE plpgsql;
+
+
+
+select generate_aliens_and_agents(200, 20);
+select generate_planets(10);
+
+select generate_skills_and_professions(20, 20);
+select generate_locations(20);
+select generate_alien_personality(100);
+select generate_agent_info();
+select generate_alien_forms_connect_skills(200);
+select generate_request();
+select generate_alien_info();
+select generate_warning(200);
 
 -- create table agent_alien
 -- (
