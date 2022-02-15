@@ -367,8 +367,6 @@ begin
 end;
 $$ LANGUAGE plpgsql;
 
-select *
-from alien_info;
 
 CREATE OR REPLACE FUNCTION generate_alien_info() RETURNS VOID AS
 $$
