@@ -161,6 +161,7 @@ $$ language plpgsql;
 create trigger set_departure_date after update on alien_info
     for each row execute procedure set_departure_date();
 
+
 -- Триггер для проверки дублей в alien_form если заявка еще на рассмотрении
 create or replace function check_pending_form_duplicates() returns trigger as $$
 declare
@@ -176,3 +177,17 @@ $$ language plpgsql;
 
 create trigger check_pending_form_duplicates after insert on alien_form
     for each row execute procedure check_pending_form_duplicates();
+
+
+-- Триггер для проверки дублирования имен живых агентов
+create or replace function check_alive_nickname_duplicates() returns trigger as $$
+begin
+    if exists(select 1 from agent_info where nickname = new.nickname and is_alive) then
+        raise exception 'alive agent with the same nickname already exists';
+    end if;
+    return new;
+end;
+$$ language plpgsql;
+
+create trigger check_alive_nickname_duplicates after insert on agent_info
+    for each row execute procedure check_alive_nickname_duplicates();
