@@ -266,27 +266,27 @@ declare
     agents_nicks char[]      = '{A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z}';
     c            int         = 1;
     curr_letter  int         = 1;
-    curr_nick    varchar(64) = '';
+    last_nick    varchar(64) = 'A';
 begin
+    -- для каждого агента
     for i in 1..agents
         loop
-            -- если закончились ники следующие делаем с +1 буквой
-            if c = array_length(agents_nicks, 1) then
+            -- если у прошлого ника была буква Z значит надо добавить одну букву и начинать с А
+            if RIGHT(last_nick, 1) = 'Z' then
                 c := c + 1;
+                curr_letter := 1;
+                -- берем букву и если это А тогда добавляем ее справа
+                last_nick := last_nick || agents_nicks[curr_letter];
+            else
+                -- если не А - заменяем последнюю
+                last_nick := overlay(last_nick placing agents_nicks[curr_letter] from c);
             end if;
 
-            -- для каждой буквы
-            for j in 1..c
-                loop
-                    curr_nick := curr_nick || agents_nicks[curr_letter];
-                    -- след буква будет другой
-                    curr_letter := curr_letter + 1;
-                end loop;
+            curr_letter := curr_letter + 1;
 
             insert into agent_info(user_id, nickname, is_alive)
-            values (agents_ids[i], curr_nick, true),
-                   (agents_ids[i], curr_nick, false); -- умершие агенты
-            curr_nick := '';
+            values (agents_ids[i], last_nick, true),
+                   (agents_ids[i], last_nick, false); -- умершие агенты
         end loop;
 end;
 $$ LANGUAGE plpgsql;
@@ -429,7 +429,7 @@ begin
 
     for i in 1..$1
         loop
-            for j in 1..(1 + floor(1 + random() * array_length(agent_aliens_ids, 1)))
+            for j in 1..(1 + floor(1 + random() * 100))
                 loop
                     insert into tracking_report(report_date, behavior, description, agent_alien_id)
                     values (curr_date,
@@ -440,17 +440,17 @@ begin
         end loop;
 end;
 $$ LANGUAGE plpgsql;
-
-select generate_aliens_and_agents(200, 20);
-select generate_planets(10);
-select generate_skills_and_professions(20, 20);
-select generate_locations(20);
-select generate_alien_personality(100);
+select * from tracking_report;
+select * from agent_alien;
+select generate_aliens_and_agents(1000, 100);
+select generate_planets(20);
+select generate_skills_and_professions(500, 100);
+select generate_locations(100);
+select generate_alien_personality(1000);
 select generate_agent_info();
-select generate_alien_forms_connect_skills(200);
+select generate_alien_forms_connect_skills(1000);
 select generate_request();
 select generate_alien_info();
-select generate_warning(200);
+select generate_warning(2000);
 select generate_agent_alien();
 select generate_tracking_report(365);
-select * from tracking_report order by report_date;
