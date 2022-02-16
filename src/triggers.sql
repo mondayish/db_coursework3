@@ -154,21 +154,21 @@ begin
 end;
 $$ language plpgsql;
 
-create trigger check_pending_form_duplicates after insert on alien_form
+create trigger check_pending_form_duplicates before insert on alien_form
     for each row execute procedure check_pending_form_duplicates();
 
 
 -- Триггер для проверки дублирования имен живых агентов
 create or replace function check_alive_nickname_duplicates() returns trigger as $$
 begin
-    if exists(select 1 from agent_info where nickname = new.nickname and is_alive) then
+    if exists(select 1 from agent_info where nickname = new.nickname and is_alive and new.is_alive) then
         raise exception 'alive agent with the same nickname already exists';
     end if;
     return new;
 end;
 $$ language plpgsql;
 
-create trigger check_alive_nickname_duplicates after insert or update on agent_info
+create trigger check_alive_nickname_duplicates before insert or update on agent_info
     for each row execute procedure check_alive_nickname_duplicates();
 
 
@@ -191,7 +191,7 @@ begin
 end;
 $$ language plpgsql;
 
-create trigger check_request_type_alien_status after insert or update on request
+create trigger check_request_type_alien_status before insert or update on request
     for each row execute procedure check_request_type_alien_status();
 
 
@@ -208,5 +208,5 @@ begin
 end;
 $$ language plpgsql;
 
-create trigger check_request_alien_form after insert or update on request
+create trigger check_request_alien_form before insert or update on request
     for each row execute procedure check_request_alien_form();
