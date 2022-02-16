@@ -367,6 +367,8 @@ begin
 end;
 $$ LANGUAGE plpgsql;
 
+select *
+from alien_info;
 
 CREATE OR REPLACE FUNCTION generate_alien_info() RETURNS VOID AS
 $$
@@ -408,8 +410,9 @@ begin
         loop
             for j in 1..i % array_length(aliens_info_ids, 1)
                 loop
-                    insert into agent_alien(alien_info_id, agent_info_id)
-                    values (aliens_info_ids[i], agent_info_ids[j]);
+                    insert into agent_alien(alien_info_id, agent_info_id, start_date, end_date)
+                    values (aliens_info_ids[i], agent_info_ids[j], (current_date - INTERVAL '2 YEAR')::date,
+                            (current_date + INTERVAL '2 YEAR')::date);
                 end loop;
         end loop;
 end;
@@ -424,7 +427,7 @@ declare
     curr_date        date  := current_date;
 begin
 
-    for i in 1..DaysOfReporting
+    for i in 1..$1
         loop
             for j in 1..(1 + floor(1 + random() * array_length(agent_aliens_ids, 1)))
                 loop
@@ -432,8 +435,8 @@ begin
                     values (curr_date,
                             floor(random() * 10)::int, md5(i::text),
                             agent_aliens_ids[floor(random() * array_length(agent_aliens_ids, 1))::int]);
-                    curr_date := (curr_date - INTERVAL '1 DAY')::date;
                 end loop;
+            curr_date := (curr_date - INTERVAL '1 DAY')::date;
         end loop;
 end;
 $$ LANGUAGE plpgsql;
@@ -450,3 +453,4 @@ select generate_alien_info();
 select generate_warning(200);
 select generate_agent_alien();
 select generate_tracking_report(365);
+select * from tracking_report order by report_date;
